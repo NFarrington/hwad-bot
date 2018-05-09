@@ -3,11 +3,14 @@
 namespace App\Console\Commands;
 
 use App\Models\Guild;
+use App\Models\Member;
 use App\Models\Points;
 use CharlotteDunois\Yasmin\Client;
+use CharlotteDunois\Yasmin\Models\GuildMember;
 use CharlotteDunois\Yasmin\Models\Message;
 use CharlotteDunois\Yasmin\Models\Permissions;
 use CharlotteDunois\Yasmin\Models\Role;
+use CharlotteDunois\Yasmin\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -54,15 +57,31 @@ class BotCommand extends Command
         });
 
         $client->on('ready', function () use ($client) {
-            echo 'Ready: syncing guilds'.PHP_EOL;
+            echo 'ready: syncing guilds'.PHP_EOL;
             $this->syncGuilds($client->guilds);
-            echo 'Ready: guilds synced'.PHP_EOL;
+            echo 'ready: guilds synced'.PHP_EOL;
         });
 
         $client->on('guildCreate', function (\CharlotteDunois\Yasmin\Models\Guild $guild) {
             echo 'guildCreate: syncing guild'.PHP_EOL;
-            $this->syncGuild($guild->id, $guild->name);
+            $this->syncGuild($guild);
             echo 'guildCreate: guild synced'.PHP_EOL;
+        });
+
+        $client->on('userUpdate', function (User $new, User $old) {
+            echo "userUpdate: {$new->id} {$new->username} {$new->discriminator}".PHP_EOL;
+        });
+
+        $client->on('guildMemberAdd', function (GuildMember $member) {
+            echo 'guildMemberAdd: syncing member'.PHP_EOL;
+            $this->syncGuildMember($member);
+            echo 'guildMemberAdd: member synced'.PHP_EOL;
+        });
+
+        $client->on('guildMemberUpdate', function (GuildMember $new, GuildMember $old) {
+            echo 'guildMemberUpdate: syncing member'.PHP_EOL;
+            $this->syncGuildMember($new);
+            echo 'guildMemberUpdate: member synced'.PHP_EOL;
         });
 
         $client->on('message', function (Message $message) {
@@ -84,32 +103,6 @@ class BotCommand extends Command
         if (property_exists($e, 'path')) {
             echo "PATH: {$e->path}".PHP_EOL;
         }
-    }
-
-    /**
-     * Sync all guilds.
-     *
-     * @param \CharlotteDunois\Yasmin\Models\GuildStorage $guilds
-     * @throws \Exception
-     */
-    protected function syncGuilds($guilds)
-    {
-        $guilds = $guilds->pluck('name', 'id');
-        foreach ($guilds as $id => $name) {
-            $this->syncGuild($id, $name);
-        }
-    }
-
-    /**
-     * Sync a guild.
-     *
-     * @param $id
-     * @param $name
-     * @return \Illuminate\Database\Eloquent\Model
-     */
-    protected function syncGuild($id, $name)
-    {
-        return Guild::withTrashed()->updateOrCreate(['guild_id' => $id], ['name' => $name, 'deleted_at' => null]);
     }
 
     /**
@@ -165,5 +158,64 @@ class BotCommand extends Command
             $message->channel->send(trans("houses.{$points->house}")." now has {$points->points} points.");
             echo 'Points updated: '.$content.PHP_EOL;
         }
+    }
+
+    /**
+     * Sync all guilds.
+     *
+     * @param \CharlotteDunois\Yasmin\Models\GuildStorage $guilds
+     * @throws \Exception
+     */
+    protected function syncGuilds($guilds)
+    {
+        foreach ($guilds as $guild) {
+            $this->syncGuild($guild);
+        }
+    }
+
+    /**
+     * Sync a guild.
+     *
+     * @param \CharlotteDunois\Yasmin\Models\Guild $guild
+     * @return \CharlotteDunois\Yasmin\Models\Guild
+     */
+    protected function syncGuild(\CharlotteDunois\Yasmin\Models\Guild $guild)
+    {
+        Guild::withTrashed()->updateOrCreate(
+            ['guild_id' => $guild->id],
+            ['name' => $guild->name, 'deleted_at' => null]
+        );
+
+        $this->syncGuildMembers($guild->members);
+
+        return $guild;
+    }
+
+    /**
+     * Sync all guild members.
+     *
+     * @param \CharlotteDunois\Yasmin\Models\GuildMemberStorage $members
+     */
+    protected function syncGuildMembers($members)
+    {
+        foreach ($members as $member) {
+            $this->syncGuildMember($member);
+        }
+    }
+
+    /**
+     * Sync a guild member.
+     *
+     * @param \CharlotteDunois\Yasmin\Models\GuildMember $member
+     * @return \Illuminate\Database\Eloquent\Model
+     */
+    private function syncGuildMember(GuildMember $member)
+    {
+        $guild = Guild::where('guild_id', $member->guild->id)->first();
+
+        return Member::updateOrCreate(
+            ['uid' => $member->id, 'guild_id' => $guild->id],
+            ['username' => $member->user->username, 'nickname' => $member->nickname]
+        );
     }
 }

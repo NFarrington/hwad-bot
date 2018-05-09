@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Revisionable;
+
 /**
  * App\Models\Model
  *
@@ -15,6 +17,8 @@ namespace App\Models;
  */
 abstract class Model extends \Illuminate\Database\Eloquent\Model
 {
+    use Revisionable;
+
     /**
      * The attributes that aren't mass assignable.
      *
