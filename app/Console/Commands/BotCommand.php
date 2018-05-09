@@ -9,6 +9,7 @@ use CharlotteDunois\Yasmin\Models\Message;
 use CharlotteDunois\Yasmin\Models\Permissions;
 use CharlotteDunois\Yasmin\Models\Role;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class BotCommand extends Command
@@ -65,64 +66,10 @@ class BotCommand extends Command
         });
 
         $client->on('message', function (Message $message) {
-            $guild = Guild::where('guild_id', $message->guild->id)->first();
-            $content = $message->content;
-
-            if (preg_match('/^!points.*$/', $content)) {
-                $points = Points::where('guild_id', $guild->id)->pluck('points', 'house');
-                $pointsMessage = sprintf(
-                    "Gryffindor: %s\nHufflepuff: %s\nRavenclaw: %s\nSlytherin: %s\n",
-                    array_get($points, 'g', 0),
-                    array_get($points, 'h', 0),
-                    array_get($points, 'r', 0),
-                    array_get($points, 's', 0)
-                );
-                $message->channel->send($pointsMessage);
-            } elseif (preg_match('/^!([ghrs]) (add|sub|subtract|set) (\d+)$/', $content, $matches)) {
-                $validRoles = $message->member->roles->filter(function (Role $role) {
-                    return $role->permissions->has(Permissions::PERMISSIONS['ADMINISTRATOR'])
-                        || in_array($role->name, ['Professors', 'Prefects']);
-                });
-
-                if ($validRoles->count() === 0) {
-                    $message->channel->send('Sorry, you are not permitted to modify house points!');
-                    return;
-                }
-
-                echo 'Updating points: '.$content.PHP_EOL;
-                switch ($matches[2]) {
-                    case 'add':
-                        $operation = 'points + '.$matches[3];
-                        break;
-                    case 'sub':
-                    case 'subtract':
-                        $operation = 'points - '.$matches[3];
-                        break;
-                    case 'set':
-                        $operation = $matches[3];
-                        break;
-                }
-
-                $points = Points::updateOrCreate(['guild_id' => $guild->id, 'house' => $matches[1]], ['points' => DB::raw($operation)])->fresh();
-                $message->channel->send(trans("houses.{$points->house}")." now has {$points->points} points.");
-                echo 'Points updated: '.$content.PHP_EOL;
-            }
+            $this->handleMessage($message);
         });
 
-        $client->login(config('services.discord.bot.token'))->then(function () use ($client) {
-//            $client->addPeriodicTimer(1, function (Client $client) {
-//                /* @var \CharlotteDunois\Yasmin\Models\TextChannel $channel */
-//                $channel = $client->channels->get('364507622604275715');
-//                $time = Carbon::now()->tz('America/New_York')->format('H:i');
-//                $topic = "It is currently {$time} ET.";
-//
-//                echo "Setting topic to: '{$topic}'.".PHP_EOL;
-//                $channel->setTopic($topic)
-//                    ->otherwise([self::class, 'handleException'])
-//                    ->done();
-//            });
-        });
-
+        $client->login(config('services.discord.bot.token'));
         $loop->run();
     }
 
@@ -163,5 +110,60 @@ class BotCommand extends Command
     protected function syncGuild($id, $name)
     {
         return Guild::withTrashed()->updateOrCreate(['guild_id' => $id], ['name' => $name, 'deleted_at' => null]);
+    }
+
+    /**
+     * Handle an incoming message.
+     *
+     * @param \CharlotteDunois\Yasmin\Models\Message $message
+     */
+    protected function handleMessage(Message $message)
+    {
+        $guild = Guild::where('guild_id', $message->guild->id)->first();
+        $content = $message->content;
+
+        if (preg_match('/^!(time|servertime) ?.*$/', $content)) {
+            $time = Carbon::now()->tz('America/New_York')->format('g:iA');
+            $timeMessage = "It is currently {$time} ET.";
+            $message->channel->send($timeMessage);
+        } elseif (preg_match('/^!points ?.*$/', $content)) {
+            $points = Points::where('guild_id', $guild->id)->pluck('points', 'house');
+            $pointsMessage = sprintf(
+                "Gryffindor: %s\nHufflepuff: %s\nRavenclaw: %s\nSlytherin: %s\n",
+                array_get($points, 'g', 0),
+                array_get($points, 'h', 0),
+                array_get($points, 'r', 0),
+                array_get($points, 's', 0)
+            );
+            $message->channel->send($pointsMessage);
+        } elseif (preg_match('/^!([ghrs]) (add|sub|subtract|set) (\d+)$/', $content, $matches)) {
+            $validRoles = $message->member->roles->filter(function (Role $role) {
+                return $role->permissions->has(Permissions::PERMISSIONS['ADMINISTRATOR'])
+                    || in_array($role->name, ['Professors', 'Prefects']);
+            });
+
+            if ($validRoles->count() === 0) {
+                $message->channel->send('Sorry, you are not permitted to modify house points!');
+                return;
+            }
+
+            echo 'Updating points: '.$content.PHP_EOL;
+            switch ($matches[2]) {
+                case 'add':
+                    $operation = 'points + '.$matches[3];
+                    break;
+                case 'sub':
+                case 'subtract':
+                    $operation = 'points - '.$matches[3];
+                    break;
+                case 'set':
+                    $operation = $matches[3];
+                    break;
+            }
+
+            $points = Points::updateOrCreate(['guild_id' => $guild->id, 'house' => $matches[1]], ['points' => DB::raw($operation)])->fresh();
+            $message->channel->send(trans("houses.{$points->house}")." now has {$points->points} points.");
+            echo 'Points updated: '.$content.PHP_EOL;
+        }
     }
 }
