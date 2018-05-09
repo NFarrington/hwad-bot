@@ -69,7 +69,9 @@ class BotCommand extends Command
         });
 
         $client->on('userUpdate', function (User $new, User $old) {
-            echo "userUpdate: {$new->id} {$new->username} {$new->discriminator}".PHP_EOL;
+            echo 'userUpdate: syncing user'.PHP_EOL;
+            $this->syncUser($new);
+            echo 'userUpdate: user synced'.PHP_EOL;
         });
 
         $client->on('guildMemberAdd', function (GuildMember $member) {
@@ -211,11 +213,25 @@ class BotCommand extends Command
      */
     private function syncGuildMember(GuildMember $member)
     {
+        $this->syncUser($member->user);
+
         $guild = Guild::where('guild_id', $member->guild->id)->first();
 
         return Member::updateOrCreate(
             ['uid' => $member->id, 'guild_id' => $guild->id],
             ['username' => $member->user->username, 'nickname' => $member->nickname]
         );
+    }
+
+    /**
+     * Sync a user.
+     *
+     * @param \CharlotteDunois\Yasmin\Models\User $user
+     * @return void
+     */
+    protected function syncUser(User $user)
+    {
+        Member::where('uid', $user->id)
+            ->update(['username' => $user->username]);
     }
 }
