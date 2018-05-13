@@ -87,6 +87,7 @@ class BotCommand extends Command
         });
 
         $client->on('message', function (Message $message) {
+            $this->logMessage($message);
             $this->handleMessage($message);
         });
 
@@ -233,5 +234,17 @@ class BotCommand extends Command
     {
         Member::where('uid', $user->id)
             ->update(['username' => $user->username]);
+    }
+
+    /**
+     * @param Message $message
+     */
+    protected function logMessage($message)
+    {
+        $guild = Guild::where('guild_id', $message->guild->id)->first();
+
+        Member::where('uid', $message->member->id)
+            ->where('guild_id', $guild->id)
+            ->update(['last_message_at' => Carbon::createFromTimestamp($message->createdTimestamp)]);
     }
 }
