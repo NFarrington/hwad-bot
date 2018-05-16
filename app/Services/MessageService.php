@@ -9,7 +9,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
-class MessageService
+class MessageService extends DiscordService
 {
     /**
      * Handle a new incoming message.
@@ -48,7 +48,8 @@ class MessageService
 
         $timeMessage = "It is currently {$time} ET.";
 
-        $channel->send($timeMessage);
+        $channel->send($timeMessage)
+            ->otherwise([$this, 'handlePromiseRejection']);
     }
 
     /**
@@ -69,7 +70,8 @@ class MessageService
             array_get($points, 's', 0)
         );
 
-        $channel->send($pointsMessage);
+        $channel->send($pointsMessage)
+            ->otherwise([$this, 'handlePromiseRejection']);
     }
 
     /**
@@ -118,7 +120,8 @@ class MessageService
         $house = trans("houses.{$points->house}");
         $message = "{$house} now has {$points->points} points.";
 
-        $channel->send($message);
+        $channel->send($message)
+            ->otherwise([$this, 'handlePromiseRejection']);
     }
 
     /**
@@ -130,7 +133,8 @@ class MessageService
      */
     protected function sendError($channel, $error)
     {
-        $channel->send($error);
+        $channel->send($error)
+            ->otherwise([$this, 'handlePromiseRejection']);
     }
 
     /**

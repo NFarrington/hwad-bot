@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Guild;
 use App\Models\Member;
+use App\Services\DiscordService;
 use App\Services\MessageService;
 use CharlotteDunois\Yasmin\Client;
 use CharlotteDunois\Yasmin\Models\GuildMember;
@@ -58,8 +59,8 @@ class BotCommand extends Command
         $loop = \React\EventLoop\Factory::create();
         $client = new Client([], $loop);
 
-        $client->on('error', function (\Exception $error) {
-            $this->handleException($error);
+        $client->on('error', function ($error) {
+            $this->handleError($error);
         });
 
         $client->on('ready', function () use ($client) {
@@ -104,14 +105,12 @@ class BotCommand extends Command
     /**
      * Handle an exception.
      *
-     * @param \Exception|\CharlotteDunois\Yasmin\HTTP\DiscordAPIException $e
+     * @param $error
+     * @throws \Exception
      */
-    public static function handleException(\Exception $e)
+    protected function handleError($error)
     {
-        echo "ERROR: {$e->getMessage()}".PHP_EOL;
-        if (property_exists($e, 'path')) {
-            echo "PATH: {$e->path}".PHP_EOL;
-        }
+        DiscordService::handlePromiseRejection($error);
     }
 
     /**
