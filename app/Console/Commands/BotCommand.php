@@ -4,16 +4,12 @@ namespace App\Console\Commands;
 
 use App\Models\Guild;
 use App\Models\Member;
-use App\Models\Points;
+use App\Services\MessageService;
 use CharlotteDunois\Yasmin\Client;
 use CharlotteDunois\Yasmin\Models\GuildMember;
 use CharlotteDunois\Yasmin\Models\Message;
-use CharlotteDunois\Yasmin\Models\Permissions;
-use CharlotteDunois\Yasmin\Models\Role;
 use CharlotteDunois\Yasmin\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class BotCommand extends Command
 {
@@ -32,13 +28,23 @@ class BotCommand extends Command
     protected $description = 'Run the Hogwarts bot.';
 
     /**
+     * The message service.
+     *
+     * @var \App\Services\MessageService
+     */
+    protected $messageService;
+
+    /**
      * Create a new command instance.
      *
+     * @param \App\Services\MessageService $messageService
      * @return void
      */
-    public function __construct()
+    public function __construct(MessageService $messageService)
     {
         parent::__construct();
+
+        $this->messageService = $messageService;
     }
 
     /**
@@ -87,8 +93,8 @@ class BotCommand extends Command
         });
 
         $client->on('message', function (Message $message) {
-            $this->logMessage($message);
-            $this->handleMessage($message);
+            $this->messageService->log($message);
+            $this->messageService->handle($message);
         });
 
         $client->login(config('services.discord.bot.token'));
@@ -105,61 +111,6 @@ class BotCommand extends Command
         echo "ERROR: {$e->getMessage()}".PHP_EOL;
         if (property_exists($e, 'path')) {
             echo "PATH: {$e->path}".PHP_EOL;
-        }
-    }
-
-    /**
-     * Handle an incoming message.
-     *
-     * @param \CharlotteDunois\Yasmin\Models\Message $message
-     */
-    protected function handleMessage(Message $message)
-    {
-        $guild = Guild::where('guild_id', $message->guild->id)->first();
-        $content = $message->content;
-
-        if (preg_match('/^!(time|servertime) ?.*$/', $content)) {
-            $time = Carbon::now()->tz('America/New_York')->format('g:iA');
-            $timeMessage = "It is currently {$time} ET.";
-            $message->channel->send($timeMessage);
-        } elseif (preg_match('/^!points ?.*$/', $content)) {
-            $points = Points::where('guild_id', $guild->id)->pluck('points', 'house');
-            $pointsMessage = sprintf(
-                "Gryffindor: %s\nHufflepuff: %s\nRavenclaw: %s\nSlytherin: %s\n",
-                array_get($points, 'g', 0),
-                array_get($points, 'h', 0),
-                array_get($points, 'r', 0),
-                array_get($points, 's', 0)
-            );
-            $message->channel->send($pointsMessage);
-        } elseif (preg_match('/^!([ghrs]) (add|sub|subtract|set) (\d+)$/', $content, $matches)) {
-            $validRoles = $message->member->roles->filter(function (Role $role) {
-                return $role->permissions->has(Permissions::PERMISSIONS['ADMINISTRATOR'])
-                    || in_array($role->name, ['Professors', 'Prefects']);
-            });
-
-            if ($validRoles->count() === 0) {
-                $message->channel->send('Sorry, you are not permitted to modify house points!');
-                return;
-            }
-
-            echo 'Updating points: '.$content.PHP_EOL;
-            switch ($matches[2]) {
-                case 'add':
-                    $operation = 'points + '.$matches[3];
-                    break;
-                case 'sub':
-                case 'subtract':
-                    $operation = 'points - '.$matches[3];
-                    break;
-                case 'set':
-                    $operation = $matches[3];
-                    break;
-            }
-
-            $points = Points::updateOrCreate(['guild_id' => $guild->id, 'house' => $matches[1]], ['points' => DB::raw($operation)])->fresh();
-            $message->channel->send(trans("houses.{$points->house}")." now has {$points->points} points.");
-            echo 'Points updated: '.$content.PHP_EOL;
         }
     }
 
@@ -234,17 +185,5 @@ class BotCommand extends Command
     {
         Member::where('uid', $user->id)
             ->update(['username' => $user->username]);
-    }
-
-    /**
-     * @param Message $message
-     */
-    protected function logMessage($message)
-    {
-        $guild = Guild::where('guild_id', $message->guild->id)->first();
-
-        Member::where('uid', $message->member->id)
-            ->where('guild_id', $guild->id)
-            ->update(['last_message_at' => Carbon::createFromTimestamp($message->createdTimestamp)]);
     }
 }
