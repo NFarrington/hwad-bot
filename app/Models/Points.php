@@ -11,6 +11,7 @@ namespace App\Models;
  * @property int $points
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Revision[] $dataChanges
  * @method static \Illuminate\Database\Eloquent\Builder|\App\Models\Points whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|\App\Models\Points whereGuildId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|\App\Models\Points whereHouse($value)

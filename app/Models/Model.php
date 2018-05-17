@@ -11,6 +11,7 @@ use App\Models\Concerns\Revisionable;
  * @method static $this find($id, $columns = ['*'])
  * @method static $this inRandomOrder(string $seed = '')
  * @method static $this where($column, $operator = null, $value = null, $boolean = 'and')
+ * @method static $this whereIn($column, $values, $boolean = 'and', $not = false)
  * @method static $this whereNotIn($column, $values, $boolean = 'and')
  * @method static $this orderBy($column, $direction = 'asc')
  * @mixin \Eloquent

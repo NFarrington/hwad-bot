@@ -93,6 +93,12 @@ class BotCommand extends Command
             echo 'guildMemberUpdate: member synced'.PHP_EOL;
         });
 
+        $client->on('guildMemberRemove', function (GuildMember $member) {
+            echo 'guildMemberRemove: deleting member'.PHP_EOL;
+            $this->deleteGuildMember($member);
+            echo 'guildMemberRemove: member deleted'.PHP_EOL;
+        });
+
         $client->on('message', function (Message $message) {
             $this->messageService->log($message);
             $this->messageService->handle($message);
@@ -148,12 +154,19 @@ class BotCommand extends Command
      * Sync all guild members.
      *
      * @param \CharlotteDunois\Yasmin\Models\GuildMemberStorage $members
+     * @throws \Exception
      */
     protected function syncGuildMembers($members)
     {
+        $guild = Guild::where('guild_id', $members->first()->guild->id)->first();
+        $knownMembers = Member::where('guild_id', $guild->id)->pluck('id', 'uid');
+
         foreach ($members as $member) {
             $this->syncGuildMember($member);
+            unset($knownMembers[$member->id]);
         }
+
+        Member::whereIn('id', $knownMembers)->delete();
     }
 
     /**
@@ -168,10 +181,30 @@ class BotCommand extends Command
 
         $guild = Guild::where('guild_id', $member->guild->id)->first();
 
-        return Member::updateOrCreate(
-            ['uid' => $member->id, 'guild_id' => $guild->id],
-            ['username' => $member->user->username, 'nickname' => $member->nickname]
-        );
+        return Member::withTrashed()
+            ->updateOrCreate(
+                ['uid' => $member->id, 'guild_id' => $guild->id],
+                [
+                    'username' => $member->user->username,
+                    'nickname' => $member->nickname,
+                    'deleted_at' => null,
+                ]
+            );
+    }
+
+    /**
+     * Delete a guild member.
+     *
+     * @param \CharlotteDunois\Yasmin\Models\GuildMember $member
+     * @throws \Exception
+     */
+    protected function deleteGuildMember($member)
+    {
+        $guild = Guild::where('guild_id', $member->guild->id)->first();
+
+        Member::where('guild_id', $guild->id)
+            ->where('uid', $member->id)
+            ->delete();
     }
 
     /**
@@ -182,7 +215,8 @@ class BotCommand extends Command
      */
     protected function syncUser(User $user)
     {
-        Member::where('uid', $user->id)
+        Member::withTrashed()
+            ->where('uid', $user->id)
             ->update(['username' => $user->username]);
     }
 }
