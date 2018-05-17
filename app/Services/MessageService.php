@@ -144,8 +144,11 @@ class MessageService extends DiscordService
     {
         $inactiveSince = Carbon::now()->sub($interval);
         $inactiveMembers = Member::where('guild_id', $guild->id)
-            ->where('last_message_at', '<=', $inactiveSince)
-            ->orWhereNull('last_message_at')
+            ->where(function ($query) use ($inactiveSince) {
+                $query->where('last_message_at', '<=', $inactiveSince)
+                    ->orWhereNull('last_message_at');
+            })->where('bot', false)
+            ->orderByDesc('last_message_at')
             ->get(['username', 'nickname', 'last_message_at']);
 
         $inactiveMembers->transform(function (Member $member) {

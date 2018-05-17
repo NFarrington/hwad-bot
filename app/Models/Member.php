@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $id
  * @property string $uid
  * @property int $guild_id
+ * @property bool $bot
  * @property string $username
  * @property string|null $nickname
  * @property \Carbon\Carbon|null $last_message_at
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @method static bool|null forceDelete()
  * @method static \Illuminate\Database\Query\Builder|\App\Models\Member onlyTrashed()
  * @method static bool|null restore()
+ * @method static \Illuminate\Database\Eloquent\Builder|\App\Models\Member whereBot($value)
  * @method static \Illuminate\Database\Eloquent\Builder|\App\Models\Member whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|\App\Models\Member whereDeletedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|\App\Models\Member whereGuildId($value)
@@ -36,6 +38,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Member extends Model
 {
     use SoftDeletes;
+
+    /**
+     * The attributes that should be cast to native types.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'bot' => 'boolean',
+    ];
 
     /**
      * The attributes that should be mutated to dates.

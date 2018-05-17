@@ -189,6 +189,7 @@ class BotCommand extends Command
                 [
                     'username' => $member->user->username,
                     'nickname' => $member->nickname,
+                    'bot' => $member->user->bot,
                     'deleted_at' => null,
                 ]
             );
