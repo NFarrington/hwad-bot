@@ -25,8 +25,9 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        Gate::resource('points', \App\Policies\PointsPolicy::class, [
-            'modify' => 'modify',
+        Gate::resource('server', \App\Policies\ServerPolicy::class, [
+            'modify-points' => 'modifyPoints',
+            'list-inactive' => 'listInactive',
         ]);
     }
 }

@@ -11,6 +11,7 @@ use CharlotteDunois\Yasmin\Models\GuildMember;
 use CharlotteDunois\Yasmin\Models\Message;
 use CharlotteDunois\Yasmin\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 class BotCommand extends Command
 {
@@ -137,6 +138,7 @@ class BotCommand extends Command
      *
      * @param \CharlotteDunois\Yasmin\Models\Guild $guild
      * @return \CharlotteDunois\Yasmin\Models\Guild
+     * @throws \Exception
      */
     protected function syncGuild(\CharlotteDunois\Yasmin\Models\Guild $guild)
     {
@@ -181,7 +183,7 @@ class BotCommand extends Command
 
         $guild = Guild::where('guild_id', $member->guild->id)->first();
 
-        return Member::withTrashed()
+        $member = Member::withTrashed()
             ->updateOrCreate(
                 ['uid' => $member->id, 'guild_id' => $guild->id],
                 [
@@ -190,6 +192,12 @@ class BotCommand extends Command
                     'deleted_at' => null,
                 ]
             );
+
+        if ($member->wasRecentlyCreated) {
+            $member->update(['last_message_at' => Carbon::now()]);
+        }
+
+        return $member;
     }
 
     /**

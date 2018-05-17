@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Guild;
 use App\Models\Member;
 use App\Models\Points;
+use DateInterval;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -22,18 +23,26 @@ class MessageService extends DiscordService
         $guild = Guild::where('guild_id', $message->guild->id)->first();
         $content = $message->content;
 
-        if (preg_match('/^!(time|servertime) ?.*$/', $content)) {
+        if (preg_match('/^!(time|servertime) ?.*$/i', $content)) {
             $this->sendServerTime($message->channel);
-        } elseif (preg_match('/^!points ?.*$/', $content)) {
+        } elseif (preg_match('/^!points ?.*$/i', $content)) {
             $this->sendPointsSummary($message->channel, $guild);
-        } elseif (preg_match('/^!([ghrs]) (add|sub|subtract|set) (\d+)$/', $content, $matches)) {
-            if (!Gate::forUser($message->member)->check('points.modify')) {
+        } elseif (preg_match('/^!([ghrs]) (add|sub|subtract|set) (\d+)$/i', $content, $matches)) {
+            if (!Gate::forUser($message->member)->check('server.modify-points')) {
                 $this->sendError($message->channel, 'Sorry, you are not permitted to modify house points!');
                 return;
             }
 
             $points = $this->updatePoints($guild, $matches[1], $matches[2], $matches[3]);
             $this->sendPointsUpdate($message->channel, $points);
+        } elseif (preg_match('/^!inactive (\d+[d|m|y])$/i', $content, $matches)) {
+            if (!Gate::forUser($message->member)->check('server.list-inactive')) {
+                $this->sendError($message->channel, 'Sorry, you are not permitted to list inactive members!');
+                return;
+            }
+
+            $interval = new DateInterval('P'.strtoupper($matches[1]));
+            $this->sendInactiveList($message->channel, $guild, $interval);
         }
     }
 
@@ -44,9 +53,9 @@ class MessageService extends DiscordService
      */
     protected function sendServerTime($channel)
     {
-        $time = Carbon::now()->tz('America/New_York')->format('g:iA');
+        $time = Carbon::now()->tz('America/New_York')->format('g:iA T');
 
-        $timeMessage = "It is currently {$time} ET.";
+        $timeMessage = "It is currently {$time}.";
 
         $channel->send($timeMessage)
             ->otherwise([$this, 'handlePromiseRejection']);
@@ -122,6 +131,48 @@ class MessageService extends DiscordService
 
         $channel->send($message)
             ->otherwise([$this, 'handlePromiseRejection']);
+    }
+
+    /**
+     * Send a notification regarding the new points of a house.
+     *
+     * @param \CharlotteDunois\Yasmin\Interfaces\TextChannelInterface $channel
+     * @param \App\Models\Guild $guild
+     * @param \DateInterval $interval
+     */
+    protected function sendInactiveList($channel, $guild, $interval)
+    {
+        $inactiveSince = Carbon::now()->sub($interval);
+        $inactiveMembers = Member::where('guild_id', $guild->id)
+            ->where('last_message_at', '<=', $inactiveSince)
+            ->orWhereNull('last_message_at')
+            ->get(['username', 'nickname', 'last_message_at']);
+
+        $inactiveMembers->transform(function (Member $member) {
+            $name = $member->nickname ?: $member->username;
+            $lastMessage = $member->last_message_at
+                ? $member->last_message_at->tz('America/New_York')->format('Y-m-d H:i T')
+                : '[unknown]';
+
+            return "{$name} since {$lastMessage}";
+        });
+
+        if ($inactiveMembers->isEmpty()) {
+            $channel->send('No inactive members were found.')
+                ->otherwise([$this, 'handlePromiseRejection']);
+
+            return;
+        }
+
+        $inactiveMembers = $inactiveMembers->implode("\n");
+        if (strlen($inactiveMembers) > 2048) {
+            $inactiveMembers = substr($inactiveMembers, 0, 2045).'...';
+        }
+
+        $channel->send('The following members are inactive:', ['embed' => [
+            'title' => 'Inactive Members',
+            'description' => $inactiveMembers,
+        ]])->otherwise([$this, 'handlePromiseRejection']);
     }
 
     /**

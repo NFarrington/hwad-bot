@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $guild_id
  * @property string $username
  * @property string|null $nickname
- * @property string|null $last_message_at
+ * @property \Carbon\Carbon|null $last_message_at
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
  * @property string|null $deleted_at
@@ -36,6 +36,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Member extends Model
 {
     use SoftDeletes;
+
+    /**
+     * The attributes that should be mutated to dates.
+     *
+     * @var array
+     */
+    protected $dates = ['last_message_at'];
 
     /**
      * The attributes that are trackable.
