@@ -105,7 +105,8 @@ class BotCommand extends Command
             $this->messageService->handle($message);
         });
 
-        $client->login(config('services.discord.bot.token'));
+        $client->login(config('services.discord.bot.token'))
+            ->otherwise([$this, 'handlePromiseRejection']);
         $loop->run();
     }
 

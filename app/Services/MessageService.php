@@ -194,14 +194,16 @@ class MessageService extends DiscordService
     /**
      * Log a message.
      *
-     * @param $message
+     * @param \CharlotteDunois\Yasmin\Models\Message $message
      */
     public function log($message)
     {
-        $guild = Guild::where('guild_id', $message->guild->id)->first();
+        if ($message->guild) {
+            $guild = Guild::where('guild_id', $message->guild->id)->first();
 
-        Member::where('uid', $message->member->id)
-            ->where('guild_id', $guild->id)
-            ->update(['last_message_at' => Carbon::createFromTimestamp($message->createdTimestamp)]);
+            Member::where('uid', $message->member->id)
+                ->where('guild_id', $guild->id)
+                ->update(['last_message_at' => Carbon::createFromTimestamp($message->createdTimestamp)]);
+        }
     }
 }
