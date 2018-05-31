@@ -43,6 +43,24 @@ class MessageService extends DiscordService
 
             $interval = new DateInterval('P'.strtoupper($matches[1]));
             $this->sendInactiveList($message->channel, $guild, $interval);
+        } elseif (preg_match('/^!bumpyears$/i', $content, $matches)) {
+            if (!Gate::forUser($message->member)->check('server.modify-year-groups')) {
+                $this->sendError($message->channel, 'Sorry, you are not permitted to move year groups!');
+                return;
+            }
+
+            $this->moveYearsForward($message->guild->roles, $message->guild->members);
+            $message->channel->send('Years updated!')
+                ->otherwise([$this, 'handlePromiseRejection']);
+        } elseif (preg_match('/^!removetags$/i', $content, $matches)) {
+            if (!Gate::forUser($message->member)->check('server.remove-tags')) {
+                $this->sendError($message->channel, 'Sorry, you are not permitted to remove tags!');
+                return;
+            }
+
+            $this->removeTags($message->guild->members);
+            $message->channel->send('Tags removed!')
+                ->otherwise([$this, 'handlePromiseRejection']);
         }
     }
 
@@ -176,6 +194,55 @@ class MessageService extends DiscordService
             'title' => 'Inactive Members',
             'description' => $inactiveMembers,
         ]])->otherwise([$this, 'handlePromiseRejection']);
+    }
+
+    /**
+     * Change guild member roles to the next year.
+     *
+     * @param \CharlotteDunois\Yasmin\Models\RoleStorage $roles
+     * @param \CharlotteDunois\Yasmin\Models\GuildMemberStorage $members
+     */
+    protected function moveYearsForward($roles, $members)
+    {
+        $roles = $roles->pluck('id', 'name')->all();
+        $transitions = [
+            'First Year' => 'Second Year',
+            'Second Year' => 'Third Year',
+            'Third Year' => 'Fourth Year',
+            'Fourth Year' => 'Fifth Year',
+            'Fifth Year' => 'Sixth Year',
+            'Sixth Year' => 'Seventh Year',
+        ];
+
+        foreach ($members as $member) { /* @var \CharlotteDunois\Yasmin\Models\GuildMember $member */
+            foreach ($member->roles as $role) { /* @var \CharlotteDunois\Yasmin\Models\Role $role */
+                if (array_key_exists($role->name, $transitions)) {
+                    if (!array_key_exists($transitions[$role->name], $roles)) {
+                        continue;
+                    }
+
+                    $member->addRole($roles[$transitions[$role->name]])
+                        ->otherwise([$this, 'handlePromiseRejection']);
+                    $member->removeRole($role)
+                        ->otherwise([$this, 'handlePromiseRejection']);
+                }
+            }
+        }
+    }
+
+    /**
+     * Remove year tags from names.
+     *
+     * @param \CharlotteDunois\Yasmin\Models\GuildMemberStorage $members
+     */
+    protected function removeTags($members)
+    {
+        foreach ($members as $member) { /* @var \CharlotteDunois\Yasmin\Models\GuildMember $member */
+            if ($member->nickname && preg_match('/^\[\d+\] ?(.*)$/i', $member->nickname, $matches)) {
+                $member->setNickname($matches[1])
+                    ->otherwise([$this, 'handlePromiseRejection']);
+            }
+        }
     }
 
     /**

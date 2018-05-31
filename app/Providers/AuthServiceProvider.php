@@ -28,6 +28,8 @@ class AuthServiceProvider extends ServiceProvider
         Gate::resource('server', \App\Policies\ServerPolicy::class, [
             'modify-points' => 'modifyPoints',
             'list-inactive' => 'listInactive',
+            'modify-year-groups' => 'modifyYearGroups',
+            'remove-tags' => 'removeTags',
         ]);
     }
 }

@@ -58,4 +58,42 @@ class ServerPolicy
 
         return true;
     }
+
+    /**
+     * Determine if a guild member can modify year groups.
+     *
+     * @param \CharlotteDunois\Yasmin\Models\GuildMember $member
+     * @return bool
+     */
+    public function modifyYearGroups($member)
+    {
+        $validRoles = $member->roles->filter(function (Role $role) {
+            return $role->permissions->has(Permissions::PERMISSIONS['ADMINISTRATOR']);
+        });
+
+        if ($validRoles->count() === 0) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Determine if a guild member can modify year groups.
+     *
+     * @param \CharlotteDunois\Yasmin\Models\GuildMember $member
+     * @return bool
+     */
+    public function removeTags($member)
+    {
+        $validRoles = $member->roles->filter(function (Role $role) {
+            return $role->permissions->has(Permissions::PERMISSIONS['ADMINISTRATOR']);
+        });
+
+        if ($validRoles->count() === 0) {
+            return false;
+        }
+
+        return true;
+    }
 }
