@@ -50,7 +50,7 @@ class MessageService extends DiscordService
             }
 
             $this->moveYearsForward($message->guild->roles, $message->guild->members);
-            $message->channel->send('Years updated!')
+            $message->channel->send('Updating years... this may take a minute or two!')
                 ->otherwise([$this, 'handlePromiseRejection']);
         } elseif (preg_match('/^!removetags$/i', $content, $matches)) {
             if (!Gate::forUser($message->member)->check('server.remove-tags')) {
@@ -59,7 +59,7 @@ class MessageService extends DiscordService
             }
 
             $this->removeTags($message->guild->members);
-            $message->channel->send('Tags removed!')
+            $message->channel->send('Removing tags... this may take a minute or two!')
                 ->otherwise([$this, 'handlePromiseRejection']);
         }
     }
