@@ -227,6 +227,10 @@ class BotCommand extends Command
     {
         Member::withTrashed()
             ->where('uid', $user->id)
-            ->update(['username' => $user->username]);
+            ->where('username', '!=', $user->username)
+            ->get()
+            ->each(function (Member $user) {
+                $user->update(['username' => $user->username]);
+            });
     }
 }
