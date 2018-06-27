@@ -186,13 +186,13 @@ class MessageService extends DiscordService
         }
 
         $inactiveMembers = $inactiveMembers->implode("\n");
-        if (strlen($inactiveMembers) > 2048) {
-            $inactiveMembers = substr($inactiveMembers, 0, 2045).'...';
+        if (strlen($inactiveMembers) > 2042) {
+            $inactiveMembers = substr($inactiveMembers, 0, 2039).'...';
         }
 
         $channel->send('The following members are inactive:', ['embed' => [
             'title' => 'Inactive Members',
-            'description' => $inactiveMembers,
+            'description' => "```{$inactiveMembers}```",
         ]])->otherwise([$this, 'handlePromiseRejection']);
     }
 
