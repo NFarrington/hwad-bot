@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Guild;
 use App\Models\Member;
 use App\Models\Points;
+use CharlotteDunois\Yasmin\Models\Role;
 use DateInterval;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,33 @@ class MessageService extends DiscordService
             $this->sendServerTime($message->channel);
         } elseif (preg_match('/^!points ?.*$/i', $content)) {
             $this->sendPointsSummary($message->channel, $guild);
+        } elseif (preg_match('/^!(gryffindor|hufflepuff|ravenclaw|slytherin) ?.*$/i', $content, $matches)) {
+            $existingHouse = $message->member->roles->filter(function (Role $role) {
+                return strcasecmp($role->name, 'Gryffindor') === 0 ||
+                    strcasecmp($role->name, 'Hufflepuff') === 0 ||
+                    strcasecmp($role->name, 'Ravenclaw') === 0 ||
+                    strcasecmp($role->name, 'Slytherin') === 0;
+            });
+
+            if ($existingHouse->count() > 0) {
+                $this->sendError($message->channel, 'Sorry, you already have a house!');
+                return;
+            }
+
+            $role = $message->guild->roles->filter(function (Role $role) use ($matches) {
+                return strcasecmp($role->name, $matches[1]) === 0;
+            })->first();
+
+            if (!$role) {
+                $this->sendError($message->channel, 'Sorry, we could not find that role!');
+                return;
+            }
+
+            $message->member->addRole($role)
+                ->then(function ($member) use ($message, $matches) {
+                    $message->channel->send('You are now a member of '.ucfirst($matches[1]).'!')
+                        ->otherwise([$this, 'handlePromiseRejection']);
+                }, [$this, 'handlePromiseRejection']);
         } elseif (preg_match('/^!([ghrs]) (add|sub|subtract|set) (\d+)$/i', $content, $matches)) {
             if (!Gate::forUser($message->member)->check('server.modify-points')) {
                 $this->sendError($message->channel, 'Sorry, you are not permitted to modify house points!');
@@ -214,8 +242,10 @@ class MessageService extends DiscordService
             'Sixth Year' => 'Seventh Year',
         ];
 
-        foreach ($members as $member) { /* @var \CharlotteDunois\Yasmin\Models\GuildMember $member */
-            foreach ($member->roles as $role) { /* @var \CharlotteDunois\Yasmin\Models\Role $role */
+        foreach ($members as $member) {
+            /* @var \CharlotteDunois\Yasmin\Models\GuildMember $member */
+            foreach ($member->roles as $role) {
+                /* @var \CharlotteDunois\Yasmin\Models\Role $role */
                 if (array_key_exists($role->name, $transitions)) {
                     if (!array_key_exists($transitions[$role->name], $roles)) {
                         continue;
@@ -237,7 +267,8 @@ class MessageService extends DiscordService
      */
     protected function removeTags($members)
     {
-        foreach ($members as $member) { /* @var \CharlotteDunois\Yasmin\Models\GuildMember $member */
+        foreach ($members as $member) {
+            /* @var \CharlotteDunois\Yasmin\Models\GuildMember $member */
             if ($member->nickname && preg_match('/^\[\d+\] ?(.*)$/i', $member->nickname, $matches)) {
                 $member->setNickname($matches[1])
                     ->otherwise([$this, 'handlePromiseRejection']);
