@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Guild;
 use App\Models\Member;
 use App\Models\Points;
+use CharlotteDunois\Yasmin\Models\Message;
 use CharlotteDunois\Yasmin\Models\Role;
 use DateInterval;
 use Illuminate\Support\Carbon;
@@ -23,6 +24,25 @@ class MessageService extends DiscordService
     {
         $guild = Guild::where('guild_id', $message->guild->id)->first();
         $content = $message->content;
+
+        /** @var \CharlotteDunois\Yasmin\Models\TextChannel $channel */
+        $channel = $message->channel;
+        if (strcasecmp($channel->name, 'pensieve') === 0
+            && $message->member->user->bot === false
+            && $message->attachments->count() === 0
+        ) {
+            $channel->send("<@{$message->member->id}> You may only send images in this channel. Discussion is not allowed.")
+                ->then(function (Message $message) {
+                    $message->client->addTimer(5, function () use ($message) {
+                        $message->delete();
+                    });
+                }, [$this, 'handlePromiseRejection']);
+            
+            $message->delete()
+                ->otherwise([$this, 'handlePromiseRejection']);
+
+            return;
+        }
 
         if (preg_match('/^!(time|servertime) ?.*$/i', $content)) {
             $this->sendServerTime($message->channel);
@@ -52,8 +72,7 @@ class MessageService extends DiscordService
 
             $message->member->addRole($role)
                 ->then(function ($member) use ($message, $matches) {
-                    $message->channel->send('You are now a member of '.ucfirst($matches[1]).'!')
-                        ->otherwise([$this, 'handlePromiseRejection']);
+                    return $message->channel->send('You are now a member of '.ucfirst($matches[1]).'!');
                 }, [$this, 'handlePromiseRejection']);
         } elseif (preg_match('/^!([ghrs]) (add|sub|subtract|set) (\d+)$/i', $content, $matches)) {
             if (!Gate::forUser($message->member)->check('server.modify-points')) {
