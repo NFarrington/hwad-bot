@@ -25,24 +25,24 @@ class MessageService extends DiscordService
         $guild = Guild::where('guild_id', $message->guild->id)->first();
         $content = $message->content;
 
-        /** @var \CharlotteDunois\Yasmin\Models\TextChannel $channel */
-        $channel = $message->channel;
-        if (strcasecmp($channel->name, 'pensieve') === 0
-            && $message->member->user->bot === false
-            && $message->attachments->count() === 0
-        ) {
-            $channel->send("<@{$message->member->id}> You may only send images in this channel. Discussion is not allowed.")
-                ->then(function (Message $message) {
-                    $message->client->addTimer(5, function () use ($message) {
-                        $message->delete();
-                    });
-                }, [$this, 'handlePromiseRejection']);
-            
-            $message->delete()
-                ->otherwise([$this, 'handlePromiseRejection']);
-
-            return;
-        }
+        // /** @var \CharlotteDunois\Yasmin\Models\TextChannel $channel */
+        // $channel = $message->channel;
+        // if (strcasecmp($channel->name, 'pensieve') === 0
+        //     && $message->member->user->bot === false
+        //     && $message->attachments->count() === 0
+        // ) {
+        //     $channel->send("<@{$message->member->id}> You may only send images in this channel. Discussion is not allowed.")
+        //         ->then(function (Message $message) {
+        //             $message->client->addTimer(5, function () use ($message) {
+        //                 $message->delete();
+        //             });
+        //         }, [$this, 'handlePromiseRejection']);
+        //    
+        //     $message->delete()
+        //         ->otherwise([$this, 'handlePromiseRejection']);
+        //
+        //     return;
+        // }
 
         if (preg_match('/^!(time|servertime) ?.*$/i', $content)) {
             $this->sendServerTime($message->channel);
