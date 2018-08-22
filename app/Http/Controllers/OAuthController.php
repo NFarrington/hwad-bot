@@ -58,7 +58,7 @@ class OAuthController extends Controller
             \Auth::login($user);
             \Session::put('user.access-token', $token);
 
-            return redirect()->route('home');
+            return redirect()->intended(route('home'));
         }
 
         $next = config('discord.uri').'/oauth2/authorize?response_type=code&client_id='.config('discord.client_id').'&scope=identify guilds&redirect_uri='.route('login');
