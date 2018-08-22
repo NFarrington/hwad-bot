@@ -28,5 +28,13 @@ namespace App\Models;
  */
 class Revision extends Model
 {
-    //
+    public function member()
+    {
+        return $this->morphTo('member', Member::class, 'id');
+    }
+
+    public function revisionable()
+    {
+        return $this->morphTo();
+    }
 }

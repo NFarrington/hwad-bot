@@ -11,4 +11,7 @@
 |
 */
 
-Route::get('/', 'Controller@welcome');
+Route::redirect('/', 'oauth');
+Route::get('oauth', 'OAuthController@login')->name('login');
+Route::get('home', 'HogwartsController@home')->name('home');
+Route::get('name-changes', 'HogwartsController@nameChanges')->name('name-changes');

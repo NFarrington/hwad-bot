@@ -37,7 +37,7 @@ class MessageService extends DiscordService
         //                 $message->delete();
         //             });
         //         }, [$this, 'handlePromiseRejection']);
-        //    
+        //
         //     $message->delete()
         //         ->otherwise([$this, 'handlePromiseRejection']);
         //

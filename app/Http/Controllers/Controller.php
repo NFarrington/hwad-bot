@@ -10,14 +10,4 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 class Controller extends BaseController
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
-
-    /**
-     * Display the welcome page.
-     *
-     * @return \Illuminate\View\View
-     */
-    public function welcome()
-    {
-        return view('welcome');
-    }
 }
