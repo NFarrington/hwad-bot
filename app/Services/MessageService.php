@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Guild;
 use App\Models\Member;
 use App\Models\Points;
-use CharlotteDunois\Yasmin\Models\Message;
 use CharlotteDunois\Yasmin\Models\Role;
 use DateInterval;
 use Illuminate\Support\Carbon;
@@ -259,6 +258,7 @@ class MessageService extends DiscordService
             'Fourth Year' => 'Fifth Year',
             'Fifth Year' => 'Sixth Year',
             'Sixth Year' => 'Seventh Year',
+            'Seventh Year' => 'Graduated',
         ];
 
         foreach ($members as $member) {
