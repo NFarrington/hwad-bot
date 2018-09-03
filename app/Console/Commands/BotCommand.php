@@ -70,6 +70,16 @@ class BotCommand extends Command
             echo 'ready: guilds synced'.PHP_EOL;
         });
 
+        $client->on('disconnect', function (int $code, string $reason) {
+            echo "disconnect: {$code} {$reason}";
+            \Log::error("disconnect: {$code} {$reason}");
+        });
+
+        $client->on('reconnect', function () {
+            echo 'reconnect';
+            \Log::error('reconnect');
+        });
+
         $client->on('guildCreate', function (\CharlotteDunois\Yasmin\Models\Guild $guild) {
             echo 'guildCreate: syncing guild'.PHP_EOL;
             $this->syncGuild($guild);
